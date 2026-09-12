@@ -34,10 +34,20 @@ The API key is **never** part of a composition or of the settings document:
 - The provider resolves it per request through `ctx.credentials.resolve()`.
 - The settings card writes it through `remote.credentials.set()` and learns
   back only whether a key is configured. The page never receives the literal
-  again, so the input stays empty and shows a "hinterlegt" placeholder.
+  again, so the input stays empty and its placeholder says where the value is.
+
+There is deliberately **no reveal path**. The credentials domain exposes
+`describe` / `set` / `unset` and no read, so a stored key cannot be displayed —
+and this package adds no route that would: the literal would then sit in the
+page, readable by any script running there and by the developer tools, for a
+value the user can replace but rarely needs to inspect. The card says so
+instead of offering a control that cannot work. The show/hide toggle on the key
+field exists only for a value the user has just typed, and disappears as soon
+as the field is empty.
 
 A literal `apiKey` in the config remains possible as a break-glass option; it
-takes precedence over the store and is marked `secret` in the schema.
+takes precedence over the store and is marked `secret` in the schema. That one
+is readable, because it already lives in the settings document.
 
 ## Settings namespace
 

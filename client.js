@@ -19,6 +19,15 @@
  *     only whether a key is configured, and writes it through
  *     `remote.credentials`; the page never receives the literal back.
  *
+ * The second point is a deliberate limit, not an omission. The credentials
+ * domain exposes `describe` / `set` / `unset` and no read, so there is no way
+ * to show the stored key — and this package adds none: a reveal route would
+ * hand the literal to the page, where any script on it and the developer tools
+ * could read it, for a value the user can replace but rarely needs to inspect.
+ * The card therefore says so instead of offering a control that cannot work:
+ * the stored key is replace-only, and the show/hide toggle exists solely for a
+ * value the user has just typed.
+ *
  * @module dsh-web-search-brave/client
  */
 
@@ -231,6 +240,10 @@ window.__ModuleLoader__.load({
       const available = snapshot.status === 'ready'
       const writable = available && snapshot.writable === true
       const keyDraft = drafts[KEY_FIELD]
+      /** Any typed character at all — what the reveal control has to work with. */
+      const keyHasDraft = typeof keyDraft === 'string' && keyDraft.length > 0
+      /** A key worth writing: whitespace alone is not one. */
+      const keyStaged = typeof keyDraft === 'string' && keyDraft.trim().length > 0
       const keyConfigured = credential.configured
 
       /** Every staged section field, with its parse result. */
@@ -238,17 +251,19 @@ window.__ModuleLoader__.load({
         .filter((spec) => drafts[spec.field] !== undefined)
         .map((spec) => ({ field: spec.field, spec, parsed: parseDraft(spec.kind, drafts[spec.field]) }))
       const invalid = plan.some((item) => item.parsed === undefined)
-      const keyStaged = typeof keyDraft === 'string' && keyDraft.trim().length > 0
       // Anything the user typed is a draft worth discarding — including a value
       // the field rejects, which must not become a draft with no way back.
       const dirty = Object.keys(drafts).some((field) => (
         field === KEY_FIELD
-          ? typeof drafts[field] === 'string' && drafts[field].trim().length > 0
+          ? keyStaged
           : drafts[field] !== formatField(snapshot.value?.[field])
       ))
 
       function edit(field, text) {
         setFailed(false)
+        // An emptied key draft has nothing left to reveal; the next value the
+        // user types starts masked again.
+        if (field === KEY_FIELD && text.length === 0) setReveal(false)
         setDrafts((current) => ({ ...current, [field]: text }))
       }
 
@@ -318,8 +333,8 @@ window.__ModuleLoader__.load({
             id: 'brave-search-key',
             label: 'Brave API-Schlüssel',
             hint: keyConfigured
-              ? 'Ein Schlüssel ist im Credential-Speicher hinterlegt. Leer lassen, um ihn zu behalten.'
-              : 'Aus der ketch-Konfiguration oder von api-dashboard.search.brave.com. Der Wert wird nur an den Host übertragen und nie zurückgelesen.',
+              ? 'Hinterlegt. Der Schlüssel lässt sich nicht anzeigen — zum Ersetzen einen neuen Wert eingeben und speichern; leer lassen behält den bisherigen.'
+              : 'Subscription-Token von api-dashboard.search.brave.com. Der Wert geht nur an den Host und wird nie zurückgelesen.',
           },
             h('div', { className: 'braveSearchLine' },
               h('input', {
@@ -328,16 +343,25 @@ window.__ModuleLoader__.load({
                 type: reveal ? 'text' : 'password',
                 autoComplete: 'off',
                 spellCheck: false,
-                placeholder: keyConfigured ? '••••••••  (hinterlegt)' : 'Brave-Subscription-Token',
+                // Deliberately no dot placeholder: this control is empty even
+                // when the Host holds a key, and dots made an empty field look
+                // like a masked value that revealing would uncover.
+                placeholder: keyConfigured
+                  ? 'Im Credential-Speicher hinterlegt'
+                  : 'Brave-Subscription-Token',
                 disabled: !writable || !credential.writable,
                 value: keyDraft ?? '',
                 onChange: (event) => { edit(KEY_FIELD, event.target.value) },
               }),
-              h('button', {
-                type: 'button',
-                className: 'braveSearchToggle',
-                onClick: () => { setReveal((current) => !current) },
-              }, reveal ? 'verbergen' : 'anzeigen'),
+              // Revealing is only meaningful for something just typed; with no
+              // draft there is nothing to show, so the control stays away.
+              keyHasDraft
+                ? h('button', {
+                    type: 'button',
+                    className: 'braveSearchToggle',
+                    onClick: () => { setReveal((current) => !current) },
+                  }, reveal ? 'verbergen' : 'anzeigen')
+                : null,
             ),
           ),
           FIELDS.map((spec) => {
