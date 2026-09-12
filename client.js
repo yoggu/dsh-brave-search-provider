@@ -41,6 +41,10 @@ window.__ModuleLoader__.load({
     const React = require('react')
     const h = React.createElement
     const { useCallback, useEffect, useState } = React
+    // Dasselbe Chevron wie die übrigen Plugin-Karten. `ui-primitives` gehört
+    // zum Client-Baseline, wird also vom Shell bereitgestellt und nicht in
+    // dieses Bundle kopiert.
+    const { IconChevronDownOutline14 } = require('@deepseek-ai/dsh-client-ui-primitives')
 
     /** This bundle's id, used as the marker on its injected style tag. */
     const CSS_TAG = 'dsh-web-search-brave'
@@ -93,20 +97,18 @@ window.__ModuleLoader__.load({
     // Harness (`--dsw-alias-*`); eigene Hex-Werte wären im jeweils anderen
     // Theme unlesbar.
     const CSS = `
-      .braveSearchCard{border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}
-      .braveSearchHead{display:flex;align-items:center;justify-content:space-between;gap:18px;width:100%;box-sizing:border-box;padding:18px 20px 16px;border:none;background:0 0;font:inherit;text-align:left;cursor:pointer;color:inherit}
-      .braveSearchHead[aria-expanded="true"]{border-bottom:1px solid var(--dsw-alias-border-l1)}
-      .braveSearchHead:hover .braveSearchName{color:var(--dsw-alias-brand-primary)}
+      .braveSearchCard{border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-3);border-radius:16px;overflow:hidden;transition:border-color .16s,background .16s}
+      .braveSearchCardOpen{background:var(--dsw-alias-bg-layer-2);border-color:var(--dsw-alias-label-dimmed)}
+      .braveSearchHead{appearance:none;width:100%;font:inherit;color:inherit;text-align:left;cursor:pointer;background:0 0;border:0;border-radius:12px;align-items:center;gap:12px;padding:14px 16px;display:flex}
       .braveSearchHeadText{min-width:0}
       .braveSearchName{margin:0;font-size:15px;font-weight:650;color:var(--dsw-alias-label-primary)}
+      .braveSearchBadge{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary)}
+      .braveSearchDot{width:6px;height:6px;border-radius:50%;background:currentColor}
       .braveSearchMeta{margin:5px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.5}
-      .braveSearchHeadRight{display:inline-flex;align-items:center;gap:12px}
-      .braveSearchChevron{color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1}
-      .braveSearchBadge{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary)}
-      .braveSearchBadge.on{border-color:var(--dsw-alias-state-success-primary);color:var(--dsw-alias-state-success-primary)}
-      .braveSearchBadge.off{border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}
-      .braveSearchDot{width:7px;height:7px;border-radius:50%;background:currentColor}
-      .braveSearchBody{padding:4px 20px 18px}
+      .braveSearchHeadRight{display:inline-flex;align-items:center;gap:12px;margin-left:auto}
+      .braveSearchChevron{color:var(--dsw-alias-label-tertiary);flex:none;transition:transform .16s}
+      .braveSearchChevronOpen{transform:rotate(180deg)}
+      .braveSearchBody{padding:0 16px 16px}
       .braveSearchField{display:flex;flex-direction:column;gap:6px;padding:12px 0}
       .braveSearchField + .braveSearchField{border-top:.5px solid var(--dsw-alias-border-l2)}
       .braveSearchLabel{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;line-height:1.5;color:var(--dsw-alias-label-primary)}
@@ -124,10 +126,10 @@ window.__ModuleLoader__.load({
       .braveSearchButton{appearance:none;border:1px solid var(--dsw-alias-border-l2);border-radius:9px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);padding:8px 14px;font:600 13px/1.2 inherit;cursor:pointer}
       .braveSearchButton:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}
       .braveSearchButton:disabled{opacity:.45;cursor:not-allowed}
-      .braveSearchButton.primary{border-color:var(--dsw-alias-button-primary-fill);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
+      .braveSearchButton.primary{border-color:var(--dsw-alias-border-l4);background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground)}
       .braveSearchButton.primary:hover:not(:disabled){background:var(--dsw-alias-button-primary-hover);border-color:var(--dsw-alias-button-primary-hover)}
       .braveSearchNote{margin:14px 0 0;color:var(--dsw-alias-label-secondary);font-size:12.5px;line-height:1.7}
-      .braveSearchError{margin:14px 0 0;border:1px solid var(--dsw-alias-state-error-primary);border-radius:10px;padding:10px 13px;color:var(--dsw-alias-state-error-primary);font-size:12.5px;line-height:1.7;overflow-wrap:anywhere}
+      .braveSearchError{margin:14px 0 0;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;padding:10px 13px;color:var(--dsw-alias-label-error);font-size:12.5px;line-height:1.7;overflow-wrap:anywhere}
     `
 
     if (
@@ -171,6 +173,7 @@ window.__ModuleLoader__.load({
       return h('div', { className: 'braveSearchField' },
         h('div', { className: 'braveSearchLabel' },
           h('label', { htmlFor: props.id }, props.label),
+          props.badge,
           props.overridden === true
             ? h('span', { className: 'braveSearchOverride' }, 'überschrieben')
             : null,
@@ -299,7 +302,7 @@ window.__ModuleLoader__.load({
         if (landed) setDrafts({})
       }
 
-      return h('section', { className: 'braveSearchCard' },
+      return h('section', { className: open ? 'braveSearchCard braveSearchCardOpen' : 'braveSearchCard' },
         h('button', {
           type: 'button',
           className: 'braveSearchHead',
@@ -313,25 +316,28 @@ window.__ModuleLoader__.load({
               className: 'braveSearchName',
               role: 'heading',
               'aria-level': 3,
-            }, 'Websuche (Brave)'),
+            }, 'Brave Websuche'),
             h('p', { className: 'braveSearchMeta' },
               'Das Werkzeug web_search holt seine Ergebnisse über die Brave Search API.',
             ),
           ),
           h('span', { className: 'braveSearchHeadRight' },
-            h('span', {
-              className: keyConfigured ? 'braveSearchBadge on' : 'braveSearchBadge off',
-            },
-              h('span', { className: 'braveSearchDot' }),
-              keyConfigured ? 'Schlüssel hinterlegt' : 'Kein Schlüssel',
-            ),
-            h('span', { className: 'braveSearchChevron', 'aria-hidden': 'true' }, open ? '▾' : '▸'),
+            h(IconChevronDownOutline14, {
+              className: open ? 'braveSearchChevron braveSearchChevronOpen' : 'braveSearchChevron',
+            }),
           ),
         ),
         open ? h('div', { className: 'braveSearchBody' },
           h(Field, {
             id: 'brave-search-key',
             label: 'Brave API-Schlüssel',
+            // Der Schlüsselstatus steht neben der Feldüberschrift: er sagt,
+            // ob überhaupt ein Schlüssel hinterlegt ist, und ist damit die
+            // Information, die dieses Feld selbst nicht zeigen kann.
+            badge: h('span', { className: 'braveSearchBadge' },
+              h('span', { className: 'braveSearchDot' }),
+              keyConfigured ? 'Schlüssel hinterlegt' : 'Kein Schlüssel',
+            ),
             hint: keyConfigured
               ? 'Hinterlegt. Der Schlüssel lässt sich nicht anzeigen — zum Ersetzen einen neuen Wert eingeben und speichern; leer lassen behält den bisherigen.'
               : 'Subscription-Token von api-dashboard.search.brave.com. Der Wert geht nur an den Host und wird nie zurückgelesen.',
