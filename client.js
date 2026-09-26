@@ -1,5 +1,5 @@
 /**
- * Browser half of `dsh-web-search-brave`: the plugin's card on the Plugins
+ * Browser half of `dsh-brave-search-provider`: the plugin's card on the Plugins
  * settings page.
  *
  * Hand-written in the `window.__ModuleLoader__.load` format — no JSX, no
@@ -28,11 +28,11 @@
  * the stored key is replace-only, and the show/hide toggle exists solely for a
  * value the user has just typed.
  *
- * @module dsh-web-search-brave/client
+ * @module dsh-brave-search-provider/client
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-web-search-brave',
+  id: 'dsh-brave-search-provider',
   factory: (require) => {
     const module = { exports: {} }
     const exports = module.exports
@@ -47,7 +47,7 @@ window.__ModuleLoader__.load({
     const { IconChevronDownOutline14 } = require('@deepseek-ai/dsh-client-ui-primitives')
 
     /** This bundle's id, used as the marker on its injected style tag. */
-    const CSS_TAG = 'dsh-web-search-brave'
+    const CSS_TAG = 'dsh-brave-search-provider'
     /** Settings namespace installed by this package's host half. */
     const NS = 'web-search-brave'
     /** Credential reference the provider resolves when the section names none. */
@@ -465,7 +465,7 @@ window.__ModuleLoader__.load({
           label: 'Brave Websuche',
           inject: () => ({ api }),
         }, BraveSearchCard))),
-        'web-search-brave: settings card',
+        'dsh-brave-search-provider: settings card',
       )
     }
 

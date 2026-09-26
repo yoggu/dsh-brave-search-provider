@@ -1,8 +1,9 @@
-# dsh-web-search-brave
+# dsh-brave-search-provider
 
 A local DSH `ctx.web` search provider backed by the Brave Search API, plus the
 settings card that lets the user change its endpoint and key without editing a
-composition file.
+composition file. This package supplies the Brave search backend only — it is
+not the model-facing `web_search` tool or an HTTP fetch provider.
 
 The provider id is `brave`, and the Web app selects it with
 `web.searchProvider: brave`. The model-facing `web_search` tool remains
@@ -13,7 +14,7 @@ Public HTTP fetch remains provided by `@deepseek-ai/dsh-web-fetch-http`.
 
 | Path | Half | Role |
 | --- | --- | --- |
-| `lib/index.js` | Host | Registers the `brave` search provider and installs the `web-search-brave` settings namespace. |
+| `lib/index.js` | Host | Registers the `brave` search provider and installs the `web-search-brave` settings namespace (a retained host/runtime id). |
 | `client.js` | Browser | The "Web Search (Brave)" card on Settings > Plugins > Plugin configuration. |
 | `cordis.patch.yml` | Composition | Bundle layer: selects `brave` and inserts this plugin's row. |
 
@@ -53,7 +54,9 @@ is readable, because it already lives in the settings document.
 
 Namespace `web-search-brave`, installed with `settings.installSection()`, so
 changes apply **live** — the provider reads the section through a thunk at the
-start of every search instead of snapshotting it at registration.
+start of every search instead of snapshotting it at registration. This host
+plugin id and settings namespace are retained for runtime compatibility; the
+package-facing identity is `dsh-brave-search-provider`.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -72,8 +75,8 @@ composed; a card whose namespace the host does not serve is never dispatched.
 1. Link the package into a profile and add it to that profile's bundles:
 
    ```json
-   "dependencies": { "dsh-web-search-brave": "link:/path/to/dsh-web-search-brave" },
-   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-web-search-brave"] } }
+   "dependencies": { "dsh-brave-search-provider": "link:/path/to/dsh-brave-search-provider" },
+   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-brave-search-provider"] } }
    ```
 
 2. Give the package's `node_modules/@deepseek-ai` the peers its host half

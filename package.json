@@ -1,8 +1,8 @@
 {
-  "name": "dsh-web-search-brave",
+  "name": "dsh-brave-search-provider",
   "version": "0.1.0",
   "private": true,
-  "description": "Brave Search API provider for the DeepSeek Harness web capability seam (ctx.web), with an editable settings card",
+  "description": "Brave-backed DSH ctx.web search provider and settings card (not the model-facing web_search tool or HTTP fetch provider)",
   "type": "module",
   "license": "MIT",
   "main": "lib/index.js",

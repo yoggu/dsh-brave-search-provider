@@ -1,4 +1,4 @@
-# dsh-web-search-brave bundle layer.
+# dsh-brave-search-provider bundle layer.
 #
 # Registers the Brave provider with the web seam and selects it. The provider
 # runs in this deployment's profile (see the profile's own cordis.patch.yml,
@@ -14,8 +14,9 @@
     fetchProvider: http
 
 - insert:
+    # Keep the host plugin id stable for existing deployments/settings.
     - id: web-search-brave
-      name: 'dsh-web-search-brave'
+      name: 'dsh-brave-search-provider'
       config:
         endpoint: 'https://api.search.brave.com/res/v1/web/search'
         country: 'us'
