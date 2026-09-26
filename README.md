@@ -61,8 +61,8 @@ package-facing identity is `dsh-brave-search-provider`.
 | --- | --- | --- |
 | `apiKeyEnv` | `BRAVE_API_KEY` | Credential reference to resolve. |
 | `endpoint` | `https://api.search.brave.com/res/v1/web/search` | Must be HTTPS. |
-| `country` | – | Two-letter market code sent as `country`. |
-| `searchLang` | – | Language code sent as `search_lang`. |
+| `country` | – | Two-letter market code sent as `country`. Clear the field and save to explicitly use Brave's default, even when the composition supplies a country. |
+| `searchLang` | – | Language code sent as `search_lang`. Clear the field and save to explicitly use Brave's default, even when the composition supplies a language. |
 | `timeoutMs` | `30000` | Per-request abort deadline. |
 | `apiKey` | – | Optional literal key (role `secret`). |
 

@@ -6,11 +6,9 @@
  * bundler — and declared through `exports["./client"]` plus `dsh.client` in
  * package.json, which is how the host discovers and serves a browser bundle.
  *
- * The card is registered into the keyed slot `settings.plugin.item` under the
- * settings namespace the host half installs (`brave-search-provider`). The Plugins
- * page dispatches that slot by the namespaces the Host actually serves, so the
- * card appears exactly when the host half is composed — and disappears with
- * it, leaving no trace.
+ * The configuration page is registered into `plugins.bundle.config` under
+ * this package's bundle name. It is served only while the Host half exposes
+ * the `brave-search-provider` settings namespace.
  *
  * Two planes meet here and stay separate:
  *   - the settings section carries endpoint, locale hints, timeout and the
@@ -44,12 +42,13 @@ window.__ModuleLoader__.load({
     // Dasselbe Chevron wie die übrigen Plugin-Karten. `ui-primitives` gehört
     // zum Client-Baseline, wird also vom Shell bereitgestellt und nicht in
     // dieses Bundle kopiert.
-    const { IconChevronDownOutline14 } = require('@deepseek-ai/dsh-client-ui-primitives')
+    const { IconChevronDownOutlineRegular } = require('@deepseek-ai/dsh-client-ui-primitives')
 
     /** This bundle's id, used as the marker on its injected style tag. */
     const CSS_TAG = 'dsh-brave-search-provider'
     /** Settings namespace installed by this package's host half. */
     const NS = 'brave-search-provider'
+    const BUNDLE_NAME = 'dsh-brave-search-provider'
     /** Credential reference the provider resolves when the section names none. */
     const DEFAULT_API_KEY_REF = 'BRAVE_API_KEY'
     /** Field names inside the section. */
@@ -76,14 +75,20 @@ window.__ModuleLoader__.load({
       {
         field: 'country',
         label: 'Land',
-        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. de, us). Leer lassen für Brave-Standard.',
+        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. de, us). Leeren und speichern, um Brave-Standard zu verwenden.',
         kind: 'text',
+        emptyPlaceholder: 'Brave-Standard (kein Land)',
+        // Blank means Brave's default, even when this field inherits a nonempty
+        // composition value such as the repository's default `us` market.
+        emptyValue: '',
       },
       {
         field: 'searchLang',
         label: 'Suchsprache',
-        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Leer lassen für Brave-Standard.',
+        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Leeren und speichern, um Brave-Standard zu verwenden.',
         kind: 'text',
+        emptyPlaceholder: 'Brave-Standard (keine Sprache)',
+        emptyValue: '',
       },
       {
         field: 'timeoutMs',
@@ -103,6 +108,7 @@ window.__ModuleLoader__.load({
       .braveSearchHeadText{min-width:0}
       .braveSearchName{margin:0;font-size:15px;font-weight:650;color:var(--dsw-alias-label-primary)}
       .braveSearchBadge{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-secondary)}
+      .braveSearchBadgeConfigured{border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 45%,var(--dsw-alias-border-l4));background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 10%,var(--dsw-alias-bg-layer-3));color:var(--dsw-alias-state-success-primary)}
       .braveSearchDot{width:6px;height:6px;border-radius:50%;background:currentColor}
       .braveSearchMeta{margin:5px 0 0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.5}
       .braveSearchHeadRight{display:inline-flex;align-items:center;gap:12px;margin-left:auto}
@@ -117,6 +123,9 @@ window.__ModuleLoader__.load({
       .braveSearchInput:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}
       .braveSearchInput:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}
       .braveSearchInput.invalid{border-color:var(--dsw-alias-label-error)}
+      .braveSearchClear{appearance:none;height:34px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}
+      .braveSearchClear:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+      .braveSearchClear:disabled{opacity:.45;cursor:not-allowed}
       .braveSearchHint{margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.5}
       .braveSearchLine{display:flex;align-items:center;gap:8px}
       .braveSearchLine .braveSearchInput{flex:1}
@@ -199,7 +208,7 @@ window.__ModuleLoader__.load({
       const [credential, setCredential] = useState({ ref: '', configured: false, writable: true })
       const [drafts, setDrafts] = useState({})
       const [reveal, setReveal] = useState(false)
-      const [open, setOpen] = useState(false)
+      const [open, setOpen] = useState(true)
       const [saving, setSaving] = useState(false)
       const [failed, setFailed] = useState(false)
 
@@ -260,11 +269,15 @@ window.__ModuleLoader__.load({
       const invalid = plan.some((item) => item.parsed === undefined)
       // Anything the user typed is a draft worth discarding — including a value
       // the field rejects, which must not become a draft with no way back.
-      const dirty = Object.keys(drafts).some((field) => (
-        field === KEY_FIELD
-          ? keyStaged
-          : drafts[field] !== formatField(snapshot.value?.[field])
-      ))
+      const dirty = Object.keys(drafts).some((field) => {
+        if (field === KEY_FIELD) return keyStaged
+        const spec = FIELDS.find((item) => item.field === field)
+        if (spec?.emptyValue !== undefined && drafts[field].trim() === '') {
+          return snapshot.value?.[field] !== spec.emptyValue
+            || Object.hasOwn(snapshot.user ?? {}, field) !== true
+        }
+        return drafts[field] !== formatField(snapshot.value?.[field])
+      })
 
       function edit(field, text) {
         setFailed(false)
@@ -288,11 +301,21 @@ window.__ModuleLoader__.load({
           for (const item of plan) {
             const current = formatField(snapshot.value?.[item.field])
             if (item.parsed === null) {
-              if (Object.hasOwn(snapshot.user ?? {}, item.field)) await api.scope.unset(item.field)
+              if (item.spec.emptyValue !== undefined) {
+                if (snapshot.value?.[item.field] !== item.spec.emptyValue
+                  || Object.hasOwn(snapshot.user ?? {}, item.field) !== true) {
+                  const accepted = await api.scope.set(item.field, item.spec.emptyValue)
+                  if (!accepted) landed = false
+                }
+              } else if (Object.hasOwn(snapshot.user ?? {}, item.field)) {
+                const accepted = await api.scope.unset(item.field)
+                if (!accepted) landed = false
+              }
               continue
             }
             if (item.parsed === undefined || String(item.parsed) === current) continue
-            await api.scope.set(item.field, item.parsed)
+            const accepted = await api.scope.set(item.field, item.parsed)
+            if (!accepted) landed = false
           }
           if (keyStaged) {
             await api.setKey(ref, keyDraft.trim())
@@ -326,7 +349,7 @@ window.__ModuleLoader__.load({
             ),
           ),
           h('span', { className: 'braveSearchHeadRight' },
-            h(IconChevronDownOutline14, {
+            h(IconChevronDownOutlineRegular, {
               className: open ? 'braveSearchChevron braveSearchChevronOpen' : 'braveSearchChevron',
             }),
           ),
@@ -338,7 +361,11 @@ window.__ModuleLoader__.load({
             // Der Schlüsselstatus steht neben der Feldüberschrift: er sagt,
             // ob überhaupt ein Schlüssel hinterlegt ist, und ist damit die
             // Information, die dieses Feld selbst nicht zeigen kann.
-            badge: h('span', { className: 'braveSearchBadge' },
+            badge: h('span', {
+              className: keyConfigured
+                ? 'braveSearchBadge braveSearchBadgeConfigured'
+                : 'braveSearchBadge',
+            },
               h('span', { className: 'braveSearchDot' }),
               keyConfigured ? 'Schlüssel hinterlegt' : 'Kein Schlüssel',
             ),
@@ -379,6 +406,7 @@ window.__ModuleLoader__.load({
             const overridden = Object.hasOwn(snapshot.user ?? {}, spec.field)
             const parsed = staged === undefined ? undefined : parseDraft(spec.kind, staged)
             const invalidField = staged !== undefined && parsed === undefined
+            const inputValue = staged ?? formatField(snapshot.value?.[spec.field])
             return h(Field, {
               key: spec.field,
               id: `brave-search-${spec.field}`,
@@ -387,17 +415,29 @@ window.__ModuleLoader__.load({
               overridden,
               invalid: invalidField,
             },
-              h('input', {
-                id: `brave-search-${spec.field}`,
-                className: invalidField ? 'braveSearchInput invalid' : 'braveSearchInput',
-                type: spec.kind === 'number' ? 'number' : 'text',
-                inputMode: spec.kind === 'number' ? 'numeric' : undefined,
-                autoComplete: 'off',
-                spellCheck: false,
-                disabled: !writable,
-                value: staged ?? formatField(snapshot.value?.[spec.field]),
-                onChange: (event) => { edit(spec.field, event.target.value) },
-              }),
+              h('div', { className: 'braveSearchLine' },
+                h('input', {
+                  id: `brave-search-${spec.field}`,
+                  className: invalidField ? 'braveSearchInput invalid' : 'braveSearchInput',
+                  type: spec.kind === 'number' ? 'number' : 'text',
+                  inputMode: spec.kind === 'number' ? 'numeric' : undefined,
+                  autoComplete: 'off',
+                  spellCheck: false,
+                  placeholder: spec.emptyPlaceholder,
+                  disabled: !writable,
+                  value: inputValue,
+                  onChange: (event) => { edit(spec.field, event.target.value) },
+                }),
+                spec.emptyValue !== undefined && inputValue.trim() !== ''
+                  ? h('button', {
+                      type: 'button',
+                      className: 'braveSearchClear',
+                      disabled: !writable || saving,
+                      'aria-label': `${spec.label} leeren und Brave-Standard verwenden`,
+                      onClick: () => { edit(spec.field, '') },
+                    }, 'Leeren')
+                  : null,
+              ),
             )
           }),
           failed
@@ -458,14 +498,12 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const api = makeApi(ctx)
       ctx.effect(
-        () => ctx.configForms.whileServed([NS], () => ctx.slots.inject('plugins.item', () => ctx.slots.register({
-          name: 'plugins.item',
-          id: NS,
-          order: 45,
-          label: 'Brave Websuche',
+        () => ctx.configForms.whileServed([NS], () => ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
+          name: 'plugins.bundle.config',
+          key: BUNDLE_NAME,
           inject: () => ({ api }),
         }, BraveSearchCard))),
-        'dsh-brave-search-provider: settings card',
+        'dsh-brave-search-provider: bundle configuration',
       )
     }
 

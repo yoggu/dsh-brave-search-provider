@@ -2,7 +2,8 @@
   "name": "dsh-brave-search-provider",
   "version": "0.1.0",
   "private": true,
-  "description": "Brave-backed DSH ctx.web search provider and settings card (not the model-facing web_search tool or HTTP fetch provider)",
+  "description": "Brave Search provider for DSH web_search",
+  "icon": "./icon.svg",
   "type": "module",
   "license": "MIT",
   "main": "lib/index.js",
@@ -11,10 +12,13 @@
       "default": "./lib/index.js"
     },
     "./client": "./client.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "lib",
+    "icon.svg",
+    "locale",
     "client.js",
     "cordis.patch.yml",
     "README.md"
