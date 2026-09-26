@@ -14,7 +14,7 @@ Public HTTP fetch remains provided by `@deepseek-ai/dsh-web-fetch-http`.
 | Path | Half | Role |
 | --- | --- | --- |
 | `lib/index.js` | Host | Registers the `brave` search provider and installs the `web-search-brave` settings namespace. |
-| `client.js` | Browser | The "Websuche (Brave)" card on Settings > Plugins > Plugin configuration. |
+| `client.js` | Browser | The "Web Search (Brave)" card on Settings > Plugins > Plugin configuration. |
 | `cordis.patch.yml` | Composition | Bundle layer: selects `brave` and inserts this plugin's row. |
 
 `package.json` declares `dsh.bundle.patch` (the composition layer) and
@@ -93,7 +93,7 @@ composed; a card whose namespace the host does not serve is never dispatched.
    ```
 
 4. Store the key once — either in the GUI (Settings > Plugins > Plugin
-   configuration > Websuche (Brave)) or directly:
+   configuration > Web Search (Brave)) or directly:
 
    ```yaml
    # $DSH_HOME/.credentials.yaml
