@@ -1,8 +1,7 @@
 # brave-search-provider bundle layer.
 #
 # Registers the Brave provider with the web seam and selects it. The provider
-# runs in this deployment's profile (see the profile's own cordis.patch.yml,
-# which disables web-search-deepseek and pins the same selection).
+# is selected by this bundle's patch layer.
 #
 # No API key appears here. The key lives in the DSH credentials store
 # ($DSH_HOME/.credentials.yaml, mode 600) and is resolved per request through
@@ -17,7 +16,6 @@
     - id: brave-search-provider
       name: 'dsh-brave-search-provider'
       config:
-        endpoint: 'https://api.search.brave.com/res/v1/web/search'
         country: 'us'
         searchLang: 'en'
         timeoutMs: 30000

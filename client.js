@@ -11,7 +11,7 @@
  * the `brave-search-provider` settings namespace.
  *
  * Two planes meet here and stay separate:
- *   - the settings section carries endpoint, locale hints and timeout;
+ *   - the settings section carries locale hints and timeout;
  *   - the credential domain carries the key literal itself at its fixed
  *     `BRAVE_API_KEY` reference. The card learns
  *     only whether a key is configured, and writes it through
@@ -60,32 +60,23 @@ window.__ModuleLoader__.load({
      */
     const FIELDS = [
       {
-        field: 'endpoint',
-        label: 'Endpunkt',
-        hint: 'Brave Web Search API. Nur HTTPS.',
-        kind: 'text',
-        defaultValue: 'https://api.search.brave.com/res/v1/web/search',
-      },
-      {
         field: 'country',
         label: 'Land',
-        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. ch, us). Standard: us. Der Wert kann überschrieben, aber nicht geleert werden.',
+        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. ch, us). Standard: us; leeren und speichern setzt den Standardwert zurück.',
         kind: 'text',
-        required: true,
         defaultValue: 'us',
       },
       {
         field: 'searchLang',
         label: 'Suchsprache',
-        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Standard: en. Der Wert kann überschrieben, aber nicht geleert werden.',
+        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Standard: en; leeren und speichern setzt den Standardwert zurück.',
         kind: 'text',
-        required: true,
         defaultValue: 'en',
       },
       {
         field: 'timeoutMs',
         label: 'Zeitlimit (ms)',
-        hint: 'Abbruch nach dieser Zeit. Ganze Zahl größer 0.',
+        hint: 'Abbruch nach dieser Zeit. Ganze Zahl von 1 bis 60000. Leeren und speichern setzt den Standardwert zurück.',
         kind: 'number',
         defaultValue: 30000,
       },
@@ -111,7 +102,6 @@ window.__ModuleLoader__.load({
       .braveSearchField{display:flex;flex-direction:column;gap:6px;padding:12px 0}
       .braveSearchField + .braveSearchField{border-top:.5px solid var(--dsw-alias-border-l2)}
       .braveSearchLabel{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;line-height:1.5;color:var(--dsw-alias-label-primary)}
-      .braveSearchOverride{margin-left:auto;color:var(--dsw-alias-label-tertiary);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
       .braveSearchInput{border:.5px solid var(--dsw-alias-border-l4);background:var(--dsw-alias-bg-layer-3);height:34px;min-width:0;font:inherit;color:var(--dsw-alias-label-primary);border-radius:8px;padding:0 12px;font-size:13px;line-height:1.5}
       .braveSearchInput:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}
       .braveSearchInput:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}
@@ -148,16 +138,20 @@ window.__ModuleLoader__.load({
       return ''
     }
 
-    /** Parse a draft: `undefined` blocks save; otherwise return its value. */
-    function parseDraft(kind, text, required = false) {
+    /** Show the configured default when no usable override is present. */
+    function fieldValue(snapshot, spec) {
+      return formatField(snapshot?.value?.[spec?.field]) || formatField(spec?.defaultValue)
+    }
+
+    /** Parse a draft, restoring the field default when the input is blank. */
+    function parseDraft(kind, text, defaultValue) {
       const trimmed = text.trim()
-      if (trimmed === '' && required) return undefined
-      if (trimmed === '') return null
+      if (trimmed === '') return defaultValue
       if (kind === 'number') {
         const parsed = Number(trimmed)
-        return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+        return Number.isInteger(parsed) && parsed >= 1 && parsed <= 60000 ? parsed : undefined
       }
-      return trimmed
+      return /^[a-z]{2}$/.test(trimmed) ? trimmed : undefined
     }
 
     /** One labelled field row. */
@@ -166,9 +160,6 @@ window.__ModuleLoader__.load({
         h('div', { className: 'braveSearchLabel' },
           h('label', { htmlFor: props.id }, props.label),
           props.badge,
-          props.overridden === true
-            ? h('span', { className: 'braveSearchOverride' }, 'überschrieben')
-            : null,
         ),
         props.children,
         props.hint === undefined
@@ -248,14 +239,14 @@ window.__ModuleLoader__.load({
       /** Every staged section field, with its parse result. */
       const plan = FIELDS
         .filter((spec) => drafts[spec.field] !== undefined)
-        .map((spec) => ({ field: spec.field, spec, parsed: parseDraft(spec.kind, drafts[spec.field], spec.required) }))
+        .map((spec) => ({ field: spec.field, spec, parsed: parseDraft(spec.kind, drafts[spec.field], spec.defaultValue) }))
       const invalid = plan.some((item) => item.parsed === undefined)
       // Anything the user typed is a draft worth discarding — including a value
       // the field rejects, which must not become a draft with no way back.
       const dirty = Object.keys(drafts).some((field) => {
         if (field === KEY_FIELD) return keyStaged
         const spec = FIELDS.find((item) => item.field === field)
-        return drafts[field] !== formatField(snapshot.value?.[field] ?? spec?.defaultValue)
+        return drafts[field] !== fieldValue(snapshot, spec)
       })
 
       function edit(field, text) {
@@ -278,14 +269,7 @@ window.__ModuleLoader__.load({
         let landed = true
         try {
           for (const item of plan) {
-            const current = formatField(snapshot.value?.[item.field] ?? item.spec.defaultValue)
-            if (item.parsed === null) {
-              if (Object.hasOwn(snapshot.user ?? {}, item.field)) {
-                const accepted = await api.scope.unset(item.field)
-                if (!accepted) landed = false
-              }
-              continue
-            }
+            const current = formatField(snapshot.value?.[item.field])
             if (item.parsed === undefined || String(item.parsed) === current) continue
             const accepted = await api.scope.set(item.field, item.parsed)
             if (!accepted) landed = false
@@ -376,16 +360,14 @@ window.__ModuleLoader__.load({
           ),
           FIELDS.map((spec) => {
             const staged = drafts[spec.field]
-            const overridden = Object.hasOwn(snapshot.user ?? {}, spec.field)
-            const parsed = staged === undefined ? undefined : parseDraft(spec.kind, staged, spec.required)
+            const parsed = staged === undefined ? undefined : parseDraft(spec.kind, staged, spec.defaultValue)
             const invalidField = staged !== undefined && parsed === undefined
-            const inputValue = staged ?? formatField(snapshot.value?.[spec.field] ?? spec.defaultValue)
+            const inputValue = staged ?? fieldValue(snapshot, spec)
             return h(Field, {
               key: spec.field,
               id: `brave-search-${spec.field}`,
               label: spec.label,
               hint: spec.hint,
-              overridden,
               invalid: invalidField,
             },
               h('div', { className: 'braveSearchLine' },
