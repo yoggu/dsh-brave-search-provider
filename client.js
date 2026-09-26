@@ -7,7 +7,7 @@
  * package.json, which is how the host discovers and serves a browser bundle.
  *
  * The card is registered into the keyed slot `settings.plugin.item` under the
- * settings namespace the host half installs (`web-search-brave`). The Plugins
+ * settings namespace the host half installs (`brave-search-provider`). The Plugins
  * page dispatches that slot by the namespaces the Host actually serves, so the
  * card appears exactly when the host half is composed — and disappears with
  * it, leaving no trace.
@@ -49,7 +49,7 @@ window.__ModuleLoader__.load({
     /** This bundle's id, used as the marker on its injected style tag. */
     const CSS_TAG = 'dsh-brave-search-provider'
     /** Settings namespace installed by this package's host half. */
-    const NS = 'web-search-brave'
+    const NS = 'brave-search-provider'
     /** Credential reference the provider resolves when the section names none. */
     const DEFAULT_API_KEY_REF = 'BRAVE_API_KEY'
     /** Field names inside the section. */

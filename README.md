@@ -14,7 +14,7 @@ Public HTTP fetch remains provided by `@deepseek-ai/dsh-web-fetch-http`.
 
 | Path | Half | Role |
 | --- | --- | --- |
-| `lib/index.js` | Host | Registers the `brave` search provider and installs the `web-search-brave` settings namespace (a retained host/runtime id). |
+| `lib/index.js` | Host | Registers the `brave` search provider and installs the `brave-search-provider` settings namespace. |
 | `client.js` | Browser | The "Web Search (Brave)" card on Settings > Plugins > Plugin configuration. |
 | `cordis.patch.yml` | Composition | Bundle layer: selects `brave` and inserts this plugin's row. |
 
@@ -52,10 +52,9 @@ is readable, because it already lives in the settings document.
 
 ## Settings namespace
 
-Namespace `web-search-brave`, installed with `settings.installSection()`, so
+Namespace `brave-search-provider`, installed with `settings.installSection()`, so
 changes apply **live** — the provider reads the section through a thunk at the
-start of every search instead of snapshotting it at registration. This host
-plugin id and settings namespace are retained for runtime compatibility; the
+start of every search instead of snapshotting it at registration. The
 package-facing identity is `dsh-brave-search-provider`.
 
 | Field | Default | Meaning |
