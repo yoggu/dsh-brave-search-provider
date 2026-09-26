@@ -11,9 +11,9 @@
  * the `brave-search-provider` settings namespace.
  *
  * Two planes meet here and stay separate:
- *   - the settings section carries endpoint, locale hints, timeout and the
- *     *reference* of the API key;
- *   - the credential domain carries the key literal itself. The card learns
+ *   - the settings section carries endpoint, locale hints and timeout;
+ *   - the credential domain carries the key literal itself at its fixed
+ *     `BRAVE_API_KEY` reference. The card learns
  *     only whether a key is configured, and writes it through
  *     `remote.credentials`; the page never receives the literal back.
  *
@@ -49,11 +49,10 @@ window.__ModuleLoader__.load({
     /** Settings namespace installed by this package's host half. */
     const NS = 'brave-search-provider'
     const BUNDLE_NAME = 'dsh-brave-search-provider'
-    /** Credential reference the provider resolves when the section names none. */
+    /** Fixed credential reference the provider resolves. */
     const DEFAULT_API_KEY_REF = 'BRAVE_API_KEY'
     /** Field names inside the section. */
     const KEY_FIELD = 'apiKey'
-    const REF_FIELD = 'apiKeyEnv'
 
     /**
      * The section fields this card edits. `apiKey` is not one of them: it is
@@ -61,40 +60,34 @@ window.__ModuleLoader__.load({
      */
     const FIELDS = [
       {
-        field: REF_FIELD,
-        label: 'Referenz des API-Schlüssels',
-        hint: 'Name im Credential-Speicher. Der Schlüssel selbst steht nie in den Einstellungen.',
-        kind: 'text',
-      },
-      {
         field: 'endpoint',
         label: 'Endpunkt',
         hint: 'Brave Web Search API. Nur HTTPS.',
         kind: 'text',
+        defaultValue: 'https://api.search.brave.com/res/v1/web/search',
       },
       {
         field: 'country',
         label: 'Land',
-        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. de, us). Leeren und speichern, um Brave-Standard zu verwenden.',
+        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. ch, us). Standard: us. Der Wert kann überschrieben, aber nicht geleert werden.',
         kind: 'text',
-        emptyPlaceholder: 'Brave-Standard (kein Land)',
-        // Blank means Brave's default, even when this field inherits a nonempty
-        // composition value such as the repository's default `us` market.
-        emptyValue: '',
+        required: true,
+        defaultValue: 'us',
       },
       {
         field: 'searchLang',
         label: 'Suchsprache',
-        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Leeren und speichern, um Brave-Standard zu verwenden.',
+        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Standard: en. Der Wert kann überschrieben, aber nicht geleert werden.',
         kind: 'text',
-        emptyPlaceholder: 'Brave-Standard (keine Sprache)',
-        emptyValue: '',
+        required: true,
+        defaultValue: 'en',
       },
       {
         field: 'timeoutMs',
         label: 'Zeitlimit (ms)',
         hint: 'Abbruch nach dieser Zeit. Ganze Zahl größer 0.',
         kind: 'number',
+        defaultValue: 30000,
       },
     ]
 
@@ -123,9 +116,6 @@ window.__ModuleLoader__.load({
       .braveSearchInput:focus-visible{border-color:var(--dsw-alias-brand-primary);outline:none}
       .braveSearchInput:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}
       .braveSearchInput.invalid{border-color:var(--dsw-alias-label-error)}
-      .braveSearchClear{appearance:none;height:34px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;white-space:nowrap;cursor:pointer}
-      .braveSearchClear:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
-      .braveSearchClear:disabled{opacity:.45;cursor:not-allowed}
       .braveSearchHint{margin:0;color:var(--dsw-alias-label-tertiary);font-size:12px;line-height:1.5}
       .braveSearchLine{display:flex;align-items:center;gap:8px}
       .braveSearchLine .braveSearchInput{flex:1}
@@ -151,14 +141,6 @@ window.__ModuleLoader__.load({
       document.head.appendChild(style)
     }
 
-    /** The credential reference the section currently names. */
-    function refOf(snapshot) {
-      const declared = snapshot?.value?.[REF_FIELD]
-      return typeof declared === 'string' && declared.trim().length > 0
-        ? declared.trim()
-        : DEFAULT_API_KEY_REF
-    }
-
     /** Format one section field for display in a text input. */
     function formatField(value) {
       if (typeof value === 'string') return value
@@ -166,15 +148,16 @@ window.__ModuleLoader__.load({
       return ''
     }
 
-    /** Parse a draft: `undefined` blocks the save, `null` clears, else the value. */
-    function parseDraft(kind, text) {
+    /** Parse a draft: `undefined` blocks save; otherwise return its value. */
+    function parseDraft(kind, text, required = false) {
       const trimmed = text.trim()
+      if (trimmed === '' && required) return undefined
+      if (trimmed === '') return null
       if (kind === 'number') {
-        if (trimmed === '') return null
         const parsed = Number(trimmed)
         return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
       }
-      return trimmed === '' ? null : trimmed
+      return trimmed
     }
 
     /** One labelled field row. */
@@ -214,7 +197,7 @@ window.__ModuleLoader__.load({
 
       useEffect(() => api.scope.subscribe(() => { setSnapshot(api.scope.getSnapshot()) }), [api])
 
-      const ref = refOf(snapshot)
+      const ref = DEFAULT_API_KEY_REF
 
       const readCredential = useCallback(async (target) => {
         let next = { ref: target, configured: false, writable: true }
@@ -265,18 +248,14 @@ window.__ModuleLoader__.load({
       /** Every staged section field, with its parse result. */
       const plan = FIELDS
         .filter((spec) => drafts[spec.field] !== undefined)
-        .map((spec) => ({ field: spec.field, spec, parsed: parseDraft(spec.kind, drafts[spec.field]) }))
+        .map((spec) => ({ field: spec.field, spec, parsed: parseDraft(spec.kind, drafts[spec.field], spec.required) }))
       const invalid = plan.some((item) => item.parsed === undefined)
       // Anything the user typed is a draft worth discarding — including a value
       // the field rejects, which must not become a draft with no way back.
       const dirty = Object.keys(drafts).some((field) => {
         if (field === KEY_FIELD) return keyStaged
         const spec = FIELDS.find((item) => item.field === field)
-        if (spec?.emptyValue !== undefined && drafts[field].trim() === '') {
-          return snapshot.value?.[field] !== spec.emptyValue
-            || Object.hasOwn(snapshot.user ?? {}, field) !== true
-        }
-        return drafts[field] !== formatField(snapshot.value?.[field])
+        return drafts[field] !== formatField(snapshot.value?.[field] ?? spec?.defaultValue)
       })
 
       function edit(field, text) {
@@ -299,15 +278,9 @@ window.__ModuleLoader__.load({
         let landed = true
         try {
           for (const item of plan) {
-            const current = formatField(snapshot.value?.[item.field])
+            const current = formatField(snapshot.value?.[item.field] ?? item.spec.defaultValue)
             if (item.parsed === null) {
-              if (item.spec.emptyValue !== undefined) {
-                if (snapshot.value?.[item.field] !== item.spec.emptyValue
-                  || Object.hasOwn(snapshot.user ?? {}, item.field) !== true) {
-                  const accepted = await api.scope.set(item.field, item.spec.emptyValue)
-                  if (!accepted) landed = false
-                }
-              } else if (Object.hasOwn(snapshot.user ?? {}, item.field)) {
+              if (Object.hasOwn(snapshot.user ?? {}, item.field)) {
                 const accepted = await api.scope.unset(item.field)
                 if (!accepted) landed = false
               }
@@ -404,9 +377,9 @@ window.__ModuleLoader__.load({
           FIELDS.map((spec) => {
             const staged = drafts[spec.field]
             const overridden = Object.hasOwn(snapshot.user ?? {}, spec.field)
-            const parsed = staged === undefined ? undefined : parseDraft(spec.kind, staged)
+            const parsed = staged === undefined ? undefined : parseDraft(spec.kind, staged, spec.required)
             const invalidField = staged !== undefined && parsed === undefined
-            const inputValue = staged ?? formatField(snapshot.value?.[spec.field])
+            const inputValue = staged ?? formatField(snapshot.value?.[spec.field] ?? spec.defaultValue)
             return h(Field, {
               key: spec.field,
               id: `brave-search-${spec.field}`,
@@ -423,20 +396,10 @@ window.__ModuleLoader__.load({
                   inputMode: spec.kind === 'number' ? 'numeric' : undefined,
                   autoComplete: 'off',
                   spellCheck: false,
-                  placeholder: spec.emptyPlaceholder,
                   disabled: !writable,
                   value: inputValue,
                   onChange: (event) => { edit(spec.field, event.target.value) },
                 }),
-                spec.emptyValue !== undefined && inputValue.trim() !== ''
-                  ? h('button', {
-                      type: 'button',
-                      className: 'braveSearchClear',
-                      disabled: !writable || saving,
-                      'aria-label': `${spec.label} leeren und Brave-Standard verwenden`,
-                      onClick: () => { edit(spec.field, '') },
-                    }, 'Leeren')
-                  : null,
               ),
             )
           }),

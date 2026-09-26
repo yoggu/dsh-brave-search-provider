@@ -1,9 +1,9 @@
 # dsh-brave-search-provider
 
-A local DSH `ctx.web` search provider backed by the Brave Search API, plus the
-settings card that lets the user change its endpoint and key without editing a
-composition file. This package supplies the Brave search backend only — it is
-not the model-facing `web_search` tool or an HTTP fetch provider.
+A local DSH `ctx.web` search provider backed by the Brave Search API, with a
+Plugins detail page for its endpoint, locale hints and API key. This package
+supplies the Brave search backend only — it is not the model-facing `web_search`
+tool or an HTTP fetch provider.
 
 The provider id is `brave`, and the Web app selects it with
 `web.searchProvider: brave`. The model-facing `web_search` tool remains
@@ -15,7 +15,7 @@ Public HTTP fetch remains provided by `@deepseek-ai/dsh-web-fetch-http`.
 | Path | Half | Role |
 | --- | --- | --- |
 | `lib/index.js` | Host | Registers the `brave` search provider and installs the `brave-search-provider` settings namespace. |
-| `client.js` | Browser | The "Web Search (Brave)" card on Settings > Plugins > Plugin configuration. |
+| `client.js` | Browser | The Brave Search configuration page under Plugins > Installed. |
 | `cordis.patch.yml` | Composition | Bundle layer: selects `brave` and inserts this plugin's row. |
 
 `package.json` declares `dsh.bundle.patch` (the composition layer) and
@@ -24,16 +24,16 @@ serves the browser half.
 
 ## Where the key lives
 
-The API key is **never** part of a composition or of the settings document:
+The credential-managed API key is **never** part of a composition or of the
+settings document; the optional break-glass `apiKey` field is an explicit exception:
 
-- The settings section stores only `apiKeyEnv` — the *name* of the credential
-  reference (default `BRAVE_API_KEY`), carrying the schema role
-  `credential-ref`.
+- The provider resolves the fixed credential reference `BRAVE_API_KEY` per
+  request; the reference itself is not editable in the settings page.
 - The literal lives in the DSH credentials store
   (`$DSH_HOME/.credentials.yaml`, mode `600`), or in the environment of the
   launching process.
 - The provider resolves it per request through `ctx.credentials.resolve()`.
-- The settings card writes it through `remote.credentials.set()` and learns
+- The Plugins page writes it through `remote.credentials.set()` and learns
   back only whether a key is configured. The page never receives the literal
   again, so the input stays empty and its placeholder says where the value is.
 
@@ -52,22 +52,21 @@ is readable, because it already lives in the settings document.
 
 ## Settings namespace
 
-Namespace `brave-search-provider`, installed with `settings.installSection()`, so
-changes apply **live** — the provider reads the section through a thunk at the
-start of every search instead of snapshotting it at registration. The
-package-facing identity is `dsh-brave-search-provider`.
+Namespace `brave-search-provider` is exposed to the live Plugins form while the
+Host serves it. The provider reads current settings at the start of every search,
+so changes apply **live** without re-registering the provider. The package-facing
+identity is `dsh-brave-search-provider`.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
-| `apiKeyEnv` | `BRAVE_API_KEY` | Credential reference to resolve. |
 | `endpoint` | `https://api.search.brave.com/res/v1/web/search` | Must be HTTPS. |
-| `country` | – | Two-letter market code sent as `country`. Clear the field and save to explicitly use Brave's default, even when the composition supplies a country. |
-| `searchLang` | – | Language code sent as `search_lang`. Clear the field and save to explicitly use Brave's default, even when the composition supplies a language. |
+| `country` | `us` | Two-letter market code sent as `country`; the field must not be empty. |
+| `searchLang` | `en` | Language code sent as `search_lang`; the field must not be empty. |
 | `timeoutMs` | `30000` | Per-request abort deadline. |
 | `apiKey` | – | Optional literal key (role `secret`). |
 
-The namespace appears in Settings > Plugins only while the host half is
-composed; a card whose namespace the host does not serve is never dispatched.
+The configuration page appears under Plugins > Installed only while the Host
+serves the namespace.
 
 ## Install
 
@@ -94,8 +93,8 @@ composed; a card whose namespace the host does not serve is never dispatched.
        fetchProvider: http
    ```
 
-4. Store the key once — either in the GUI (Settings > Plugins > Plugin
-   configuration > Web Search (Brave)) or directly:
+4. Store the key once — either in the GUI (Plugins > Installed > Brave Search)
+   or directly:
 
    ```yaml
    # $DSH_HOME/.credentials.yaml

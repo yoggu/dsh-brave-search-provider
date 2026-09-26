@@ -6,8 +6,8 @@
 #
 # No API key appears here. The key lives in the DSH credentials store
 # ($DSH_HOME/.credentials.yaml, mode 600) and is resolved per request through
-# `ctx.credentials.resolve`; the settings card writes it there and never reads
-# it back. Only its *reference* (`apiKeyEnv`) is part of the settings document.
+# `ctx.credentials.resolve`; the Plugins page writes it there and never reads
+# it back. The credential reference is fixed to `BRAVE_API_KEY`.
 - id: web
   config:
     searchProvider: brave
