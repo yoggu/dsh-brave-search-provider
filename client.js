@@ -190,6 +190,10 @@ window.__ModuleLoader__.load({
 
     /** The Brave web-search card. */
     function BraveSearchCard(props) {
+      if (props.view === 'summary') {
+        return 'Das Werkzeug web_search holt seine Ergebnisse über die Brave Search API.'
+      }
+
       const api = props.api
       const [snapshot, setSnapshot] = useState(() => api.scope.getSnapshot())
       const [credential, setCredential] = useState({ ref: '', configured: false, writable: true })
@@ -437,7 +441,9 @@ window.__ModuleLoader__.load({
     function makeApi(ctx) {
       const credentials = ctx.remote.credentials
       return {
-        scope: ctx.settingsScope.bind({ namespace: NS }),
+        // `settingsScope` was removed in dsh 0.1.7. Live forms now come from
+        // the shared configForms service.
+        scope: ctx.configForms.get(NS),
         describeKey: (ref) => credentials.describe([ref]),
         setKey: (ref, value) => credentials.set(ref, value),
         unsetKey: (ref) => credentials.unset(ref),
@@ -446,19 +452,24 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Register the card into the Plugins page's configurable tab.
+     * Register the card into the current Plugins settings page.
      * @param ctx - the browser plugin context.
      */
     function apply(ctx) {
       const api = makeApi(ctx)
-      ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
-        name: 'settings.plugin.item',
-        key: NS,
-        inject: () => ({ api }),
-      }, BraveSearchCard))
+      ctx.effect(
+        () => ctx.configForms.whileServed([NS], () => ctx.slots.inject('plugins.item', () => ctx.slots.register({
+          name: 'plugins.item',
+          id: NS,
+          order: 45,
+          label: 'Brave Websuche',
+          inject: () => ({ api }),
+        }, BraveSearchCard))),
+        'web-search-brave: settings card',
+      )
     }
 
-    exports.inject = ['slots', 'remote', 'remote.credentials', 'settingsScope']
+    exports.inject = ['slots', 'remote', 'remote.credentials', 'configForms']
     exports.apply = apply
     return module.exports
   },
