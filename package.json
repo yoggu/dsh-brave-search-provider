@@ -1,6 +1,6 @@
 {
   "name": "dsh-brave-search-provider",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Brave Search provider for DSH web_search",
   "icon": "./icon.svg",
