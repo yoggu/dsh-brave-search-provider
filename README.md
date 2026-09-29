@@ -4,16 +4,16 @@ Brave Search API backend for DSH's `ctx.web` search. It supplies the search prov
 
 ## Install
 
-Install the latest source from the existing default branch (older tags may not contain the current language support):
+Install the latest tagged GitHub release:
 
 ```sh
-dsh plugin --profile web add 'https://github.com/yoggu/dsh-brave-search-provider.git#main'
+dsh plugin --profile web add 'https://github.com/yoggu/dsh-brave-search-provider.git#v0.1.4'
 ```
 
 Or download the source and link the local checkout:
 
 ```sh
-git clone https://github.com/yoggu/dsh-brave-search-provider.git
+git clone --branch v0.1.4 --depth 1 https://github.com/yoggu/dsh-brave-search-provider.git
 cd dsh-brave-search-provider
 pnpm install
 dsh plugin --profile web add "link:$(pwd)"
