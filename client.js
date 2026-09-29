@@ -38,7 +38,7 @@ window.__ModuleLoader__.load({
 
     const React = require('react')
     const h = React.createElement
-    const { useCallback, useEffect, useState } = React
+    const { useCallback, useEffect, useState, useSyncExternalStore } = React
     // Dasselbe Chevron wie die übrigen Plugin-Karten. `ui-primitives` gehört
     // zum Client-Baseline, wird also vom Shell bereitgestellt und nicht in
     // dieses Bundle kopiert.
@@ -59,28 +59,52 @@ window.__ModuleLoader__.load({
      * write-only and lives in the credential domain, not in the document.
      */
     const FIELDS = [
-      {
-        field: 'country',
-        label: 'Land',
-        hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. ch, us). Standard: us; leeren und speichern setzt den Standardwert zurück.',
-        kind: 'text',
-        defaultValue: 'us',
-      },
-      {
-        field: 'searchLang',
-        label: 'Suchsprache',
-        hint: 'Sprachcode der Ergebnisse (z. B. de, en). Standard: en; leeren und speichern setzt den Standardwert zurück.',
-        kind: 'text',
-        defaultValue: 'en',
-      },
-      {
-        field: 'timeoutMs',
-        label: 'Zeitlimit (ms)',
-        hint: 'Abbruch nach dieser Zeit. Ganze Zahl von 1 bis 60000. Leeren und speichern setzt den Standardwert zurück.',
-        kind: 'number',
-        defaultValue: 30000,
-      },
+      { field: 'country', kind: 'text', defaultValue: 'us' },
+      { field: 'searchLang', kind: 'text', defaultValue: 'en' },
+      { field: 'timeoutMs', kind: 'number', defaultValue: 30000 },
     ]
+    const TEXT = {
+      en: {
+        title: 'Brave Web Search',
+        summary: 'The web_search tool gets its results from the Brave Search API.',
+        apiKey: 'Brave API key', configured: 'Key configured', notConfigured: 'No key',
+        keyStoredHint: 'Configured. The stored key cannot be displayed. Enter a new value and save to replace it; leave this field blank to keep the current key.',
+        keyHint: 'Subscription token from api-dashboard.search.brave.com. This value is sent only to the Host and is never read back.',
+        storedPlaceholder: 'Stored in the credential store', tokenPlaceholder: 'Brave subscription token',
+        show: 'Show', hide: 'Hide', invalidValue: 'This value is not accepted.',
+        saveFailure: 'Save failed. The Host did not accept the change.',
+        unavailable: 'The Host is not serving this settings namespace yet. It appears when the plugin is loaded.',
+        saving: 'Saving …', save: 'Save', discard: 'Discard',
+        credentialNote: 'Namespace {namespace}. The key is stored in the credential store, not in settings.',
+        fields: {
+          country: { label: 'Country', hint: 'Two-letter country code for result ranking (for example, ch or us). Default: us. Clear and save to restore the default.' },
+          searchLang: { label: 'Search language', hint: 'Language code for search results (for example, de or en). Default: en. Clear and save to restore the default.' },
+          timeoutMs: { label: 'Timeout (ms)', hint: 'Abort after this time. Whole number from 1 to 60000. Clear and save to restore the default.' },
+        },
+      },
+      de: {
+        title: 'Brave Websuche',
+        summary: 'Das Werkzeug web_search holt seine Ergebnisse über die Brave Search API.',
+        apiKey: 'Brave API-Schlüssel', configured: 'Schlüssel hinterlegt', notConfigured: 'Kein Schlüssel',
+        keyStoredHint: 'Hinterlegt. Der Schlüssel lässt sich nicht anzeigen — zum Ersetzen einen neuen Wert eingeben und speichern; leer lassen behält den bisherigen.',
+        keyHint: 'Subscription-Token von api-dashboard.search.brave.com. Der Wert geht nur an den Host und wird nie zurückgelesen.',
+        storedPlaceholder: 'Im Credential-Speicher hinterlegt', tokenPlaceholder: 'Brave-Subscription-Token',
+        show: 'anzeigen', hide: 'verbergen', invalidValue: 'Wert wird nicht akzeptiert.',
+        saveFailure: 'Speichern fehlgeschlagen. Der Host hat die Änderung nicht übernommen.',
+        unavailable: 'Der Host liefert diesen Namespace noch nicht. Er erscheint, sobald das Plugin geladen ist.',
+        saving: 'Speichert …', save: 'Speichern', discard: 'Verwerfen',
+        credentialNote: 'Namespace {namespace}. Der Schlüssel liegt im Credential-Speicher, nicht in den Einstellungen.',
+        fields: {
+          country: { label: 'Land', hint: 'Zweibuchstabiger Ländercode für die Ergebnisgewichtung (z. B. ch, us). Standard: us; leeren und speichern setzt den Standardwert zurück.' },
+          searchLang: { label: 'Suchsprache', hint: 'Sprachcode der Ergebnisse (z. B. de, en). Standard: en; leeren und speichern setzt den Standardwert zurück.' },
+          timeoutMs: { label: 'Zeitlimit (ms)', hint: 'Abbruch nach dieser Zeit. Ganze Zahl von 1 bis 60000. Leeren und speichern setzt den Standardwert zurück.' },
+        },
+      },
+    }
+    function textFor(active) {
+      const language = typeof active === 'string' ? active.toLowerCase().split('-')[0] : ''
+      return TEXT[language] || TEXT.en
+    }
 
     // Farben und Flächen kommen ausschließlich aus den Theme-Tokens des
     // Harness (`--dsw-alias-*`); eigene Hex-Werte wären im jeweils anderen
@@ -166,15 +190,17 @@ window.__ModuleLoader__.load({
           ? null
           : h('p', { className: 'braveSearchHint' }, props.hint),
         props.invalid === true
-          ? h('p', { className: 'braveSearchHint', role: 'alert' }, 'Wert wird nicht akzeptiert.')
+          ? h('p', { className: 'braveSearchHint', role: 'alert' }, props.invalidMessage)
           : null,
       )
     }
 
     /** The Brave web-search card. */
     function BraveSearchCard(props) {
+      const locale = useSyncExternalStore(props.api.locale.subscribe.bind(props.api.locale), props.api.locale.getSnapshot.bind(props.api.locale))
+      const t = textFor(locale.active)
       if (props.view === 'summary') {
-        return 'Das Werkzeug web_search holt seine Ergebnisse über die Brave Search API.'
+        return t.summary
       }
 
       const api = props.api
@@ -300,9 +326,9 @@ window.__ModuleLoader__.load({
               className: 'braveSearchName',
               role: 'heading',
               'aria-level': 3,
-            }, 'Brave Websuche'),
+            }, t.title),
             h('p', { className: 'braveSearchMeta' },
-              'Das Werkzeug web_search holt seine Ergebnisse über die Brave Search API.',
+              t.summary,
             ),
           ),
           h('span', { className: 'braveSearchHeadRight' },
@@ -314,7 +340,7 @@ window.__ModuleLoader__.load({
         open ? h('div', { className: 'braveSearchBody' },
           h(Field, {
             id: 'brave-search-key',
-            label: 'Brave API-Schlüssel',
+            label: t.apiKey,
             // Der Schlüsselstatus steht neben der Feldüberschrift: er sagt,
             // ob überhaupt ein Schlüssel hinterlegt ist, und ist damit die
             // Information, die dieses Feld selbst nicht zeigen kann.
@@ -324,11 +350,11 @@ window.__ModuleLoader__.load({
                 : 'braveSearchBadge',
             },
               h('span', { className: 'braveSearchDot' }),
-              keyConfigured ? 'Schlüssel hinterlegt' : 'Kein Schlüssel',
+              keyConfigured ? t.configured : t.notConfigured,
             ),
             hint: keyConfigured
-              ? 'Hinterlegt. Der Schlüssel lässt sich nicht anzeigen — zum Ersetzen einen neuen Wert eingeben und speichern; leer lassen behält den bisherigen.'
-              : 'Subscription-Token von api-dashboard.search.brave.com. Der Wert geht nur an den Host und wird nie zurückgelesen.',
+              ? t.keyStoredHint
+              : t.keyHint,
           },
             h('div', { className: 'braveSearchLine' },
               h('input', {
@@ -341,8 +367,8 @@ window.__ModuleLoader__.load({
                 // when the Host holds a key, and dots made an empty field look
                 // like a masked value that revealing would uncover.
                 placeholder: keyConfigured
-                  ? 'Im Credential-Speicher hinterlegt'
-                  : 'Brave-Subscription-Token',
+                  ? t.storedPlaceholder
+                  : t.tokenPlaceholder,
                 disabled: !writable || !credential.writable,
                 value: keyDraft ?? '',
                 onChange: (event) => { edit(KEY_FIELD, event.target.value) },
@@ -354,7 +380,7 @@ window.__ModuleLoader__.load({
                     type: 'button',
                     className: 'braveSearchToggle',
                     onClick: () => { setReveal((current) => !current) },
-                  }, reveal ? 'verbergen' : 'anzeigen')
+                  }, reveal ? t.hide : t.show)
                 : null,
             ),
           ),
@@ -366,9 +392,10 @@ window.__ModuleLoader__.load({
             return h(Field, {
               key: spec.field,
               id: `brave-search-${spec.field}`,
-              label: spec.label,
-              hint: spec.hint,
+              label: t.fields[spec.field].label,
+              hint: t.fields[spec.field].hint,
               invalid: invalidField,
+              invalidMessage: t.invalidValue,
             },
               h('div', { className: 'braveSearchLine' },
                 h('input', {
@@ -387,11 +414,11 @@ window.__ModuleLoader__.load({
           }),
           failed
             ? h('p', { className: 'braveSearchError', role: 'alert' },
-                'Speichern fehlgeschlagen. Der Host hat die Änderung nicht übernommen.')
+                t.saveFailure)
             : null,
           !available
             ? h('p', { className: 'braveSearchNote' },
-                'Der Host liefert diesen Namespace noch nicht. Er erscheint, sobald das Plugin geladen ist.')
+                t.unavailable)
             : null,
           h('div', { className: 'braveSearchActions' },
             h('button', {
@@ -399,16 +426,16 @@ window.__ModuleLoader__.load({
               className: 'braveSearchButton primary',
               disabled: saving || invalid || !dirty || !writable || (keyStaged && !credential.writable),
               onClick: () => { void save() },
-            }, saving ? 'Speichert …' : 'Speichern'),
+            }, saving ? t.saving : t.save),
             h('button', {
               type: 'button',
               className: 'braveSearchButton',
               disabled: saving || !dirty,
               onClick: discard,
-            }, 'Verwerfen'),
+            }, t.discard),
           ),
           h('p', { className: 'braveSearchNote' },
-            `Namespace ${NS}. Der Schlüssel liegt im Credential-Speicher, nicht in den Einstellungen.`,
+            t.credentialNote.replace('{namespace}', NS),
           ),
         ) : null,
       )
@@ -429,6 +456,7 @@ window.__ModuleLoader__.load({
         // `settingsScope` was removed in dsh 0.1.7. Live forms now come from
         // the shared configForms service.
         scope: ctx.configForms.get(NS),
+        locale: ctx.locale,
         describeKey: (ref) => credentials.describe([ref]),
         setKey: (ref, value) => credentials.set(ref, value),
         unsetKey: (ref) => credentials.unset(ref),
@@ -452,7 +480,7 @@ window.__ModuleLoader__.load({
       )
     }
 
-    exports.inject = ['slots', 'remote', 'remote.credentials', 'configForms']
+    exports.inject = ['slots', 'remote', 'remote.credentials', 'configForms', 'locale']
     exports.apply = apply
     return module.exports
   },

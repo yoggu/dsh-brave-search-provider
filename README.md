@@ -4,16 +4,16 @@ Brave Search API backend for DSH's `ctx.web` search. It supplies the search prov
 
 ## Install
 
-Install the tagged GitHub release into your DSH Web profile:
+Install the latest source from the existing default branch (older tags may not contain the current language support):
 
 ```sh
-dsh plugin --profile web add 'https://github.com/yoggu/dsh-brave-search-provider.git#v0.1.3'
+dsh plugin --profile web add 'https://github.com/yoggu/dsh-brave-search-provider.git#main'
 ```
 
 Or download the source and link the local checkout:
 
 ```sh
-git clone --branch v0.1.3 --depth 1 https://github.com/yoggu/dsh-brave-search-provider.git
+git clone https://github.com/yoggu/dsh-brave-search-provider.git
 cd dsh-brave-search-provider
 pnpm install
 dsh plugin --profile web add "link:$(pwd)"
@@ -27,8 +27,10 @@ To uninstall: `dsh plugin --profile web remove dsh-brave-search-provider`.
 
 ## Configuration
 
+The settings page follows the Harness UI language: English and German are supported, with English as the fallback for other or unavailable locales. Labels, help, validation, credential status, placeholders and save errors are translated. This UI language does not change the search-results language.
+
 The settings page configures country (default `us`), search language (default `en`) and request timeout (default 30 seconds). The backend calls only Brave's HTTPS web-search endpoint, does not follow redirects and resolves the key for each request. DSH's `@deepseek-ai/dsh-tool-web` still provides the model-facing search tool.
 
 ## Tests and license
 
-Run `npm test` after installing the DSH peer dependencies. MIT; see [LICENSE](LICENSE).
+Run `npm test` after installing the DSH peer dependencies. MIT; see [LICENSE](<LICENSE>).
